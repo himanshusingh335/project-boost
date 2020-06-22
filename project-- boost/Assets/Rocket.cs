@@ -1,4 +1,4 @@
-﻿
+﻿using UnityEngine.SceneManagement;
 using UnityEngine;
 
 
@@ -8,6 +8,12 @@ public class Rocket : MonoBehaviour
     AudioSource audioSource;
     [SerializeField] float rcsThrust = 100f;
     [SerializeField] float mainThrust = 100f;
+    [SerializeField] AudioClip engine;
+    [SerializeField] AudioClip levelClear;
+    [SerializeField] AudioClip deathExplosion;
+    enum State { Alive, Dying, Transcending };
+
+    State state=State.Alive; 
     // Start is called before the first frame update
     void Start()
     {
@@ -19,8 +25,12 @@ public class Rocket : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        Thrust();
-        Rotate();
+        if (state == State.Alive)
+        {
+            Thrust();
+            Rotate();
+        }
+        
     }
 
     private void Thrust()
@@ -31,7 +41,7 @@ public class Rocket : MonoBehaviour
             rigidBody.AddRelativeForce(Vector3.up * rotationThisFrame);
             if (!audioSource.isPlaying)
             {
-                audioSource.Play();
+                audioSource.PlayOneShot(engine);
             }
         }
         else
@@ -58,18 +68,44 @@ public class Rocket : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
+        if (state == State.Dying || state == State.Transcending)
+        {
+            return;
+        }
+
         switch (collision.gameObject.tag)
         {
             case "Friendly":
                 {
-                    print("ok");
+                    break;
+                }
+            case "Finish":
+                {
+                    state = State.Transcending;
+                    audioSource.PlayOneShot(levelClear);
+                    Invoke("LoadNextScene", 2f);
                     break;
                 }
             case "Untagged":
                 {
-                    print("dead");
+                    state = State.Dying;
+                    audioSource.PlayOneShot(deathExplosion);
+                    Invoke("LoadNextScene", 2f);
                     break;
                 }
         }
     }
+
+    private void LoadNextScene()
+    {
+        if(state == State.Transcending)
+        {
+            SceneManager.LoadScene(1);
+        }
+        else if (state == State.Dying)
+        {
+            SceneManager.LoadScene(0);
+        }
+    }
+        
 }
